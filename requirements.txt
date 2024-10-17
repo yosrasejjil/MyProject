@@ -1,9 +1,13 @@
-pandas
-numpy
-seaborn
-matplotlib
-scikit-learn
-xgboost
--e .
+# pandas
+# numpy
+# seaborn
+# matplotlib
+# scikit-learn
+# xgboost
+# cvxpy
+# fancyimpute
+# dill
+imbalanced-learn
+#-e .
 
 

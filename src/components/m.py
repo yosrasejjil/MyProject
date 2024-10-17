@@ -56,7 +56,7 @@ class ModelTrainer:
             # Evaluate models using GridSearchCV and collect their evaluation metrics
             model_report = evaluate_models(X_train, y_train, X_test, y_test, models, params)
 
-            # Get the best model score based on ROC AUC
+            # Get the best model based on ROC AUC score
             best_model_name = max(model_report, key=lambda x: model_report[x]["roc_auc"] if model_report[x]["roc_auc"] is not None else 0)
             best_model = models[best_model_name]
             best_model_score = model_report[best_model_name]["roc_auc"]
@@ -66,18 +66,23 @@ class ModelTrainer:
 
             logging.info(f"Best model: {best_model_name} with ROC AUC: {best_model_score}")
 
-            # Save the best model
+            # Fit the best model with the entire training set
+            best_model.fit(X_train, y_train)
+
+            # Save the best model to a file
             save_object(
                 file_path=self.model_trainer_config.trained_model_file_path,
                 obj=best_model
             )
 
-            # Make predictions using the best model
+            # Make predictions on the test set
             y_test_pred = best_model.predict(X_test)
             y_test_pred_proba = best_model.predict_proba(X_test)[:, 1] if hasattr(best_model, "predict_proba") else None
 
-            # Final evaluation on the test set
+            # Evaluate the model on the test set
             accuracy, precision, recall, f1, roc_auc = evaluate_classification_model(y_test, y_test_pred, y_test_pred_proba)
+
+            # Return the model's performance metrics
             return {
                 "best_model": best_model_name,
                 "metrics": {
@@ -88,9 +93,6 @@ class ModelTrainer:
                     "roc_auc": roc_auc
                 }
             }
-
-        except KeyError as e:
-            raise CustomException(f"Model key error: {e}", sys)
 
         except Exception as e:
             raise CustomException(e, sys)
