@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 from src.exception import CustomException
 from src.utils import load_object
+from src.logger import logging
 
 class PredictPipeline:
     def __init__(self):
@@ -10,46 +11,42 @@ class PredictPipeline:
 
     def predict(self, features):
         try:
+            logging.info(f"Input DataFrame columns: {features.columns.tolist()}")
+
             # Paths to the preprocessing steps and classification model pickle files
             cleaning_pipeline_path = os.path.join("artifacts", "cleaning_pipeline.pkl")
-            missing_pipeline_path = os.path.join('artifacts', "preprocessor.pkl")
             scaling_pipeline_path = os.path.join('artifacts', "scaling_pipeline.pkl")
-            feature_engineering_pipeline_path = os.path.join('artifacts', "feature_engineering.pkl")
             feature_selection_pipeline_path = os.path.join('artifacts', "feature_selection.pkl")
             model_path = os.path.join("artifacts", "classification_model.pkl")
-            
+
             print("Before Loading")
 
             # Load all preprocessing objects and model
             cleaning_pipeline = load_object(file_path=cleaning_pipeline_path)
-            missing_pipeline = load_object(file_path=missing_pipeline_path)
             scaling_pipeline = load_object(file_path=scaling_pipeline_path)
-            feature_engineering_pipeline = load_object(file_path=feature_engineering_pipeline_path)
             feature_selection_pipeline = load_object(file_path=feature_selection_pipeline_path)
             model = load_object(file_path=model_path)
-            
+
             print("After Loading")
-            
-            # Step 1: Clean the data
+
+            # Step 1: Standardize column names
+            # Convert all column names to lowercase with underscores for consistency
+            features.columns = features.columns.str.lower().str.replace(' ', '_')
+
+            # Step 2: Clean the data
             data_cleaned = cleaning_pipeline.transform(features)
-            
-            # Step 2: Handle missing values
-            data_no_missing = missing_pipeline.transform(data_cleaned)
-            
+
             # Step 3: Scale the data
-            data_scaled = scaling_pipeline.transform(data_no_missing)
-            
-            # Step 4: Apply feature engineering
-            data_featured = feature_engineering_pipeline.transform(data_scaled)
-            
-            # Step 5: Apply feature selection
-            data_selected = feature_selection_pipeline.transform(data_featured)
-            
-            # Step 6: Make predictions with the classification model
+            data_scaled = scaling_pipeline.transform(data_cleaned)
+
+            # Step 4: Apply feature selection
+            data_selected = feature_selection_pipeline.transform(data_scaled)
+
+            # Step 5: Make predictions with the classification model
             predictions = model.predict(data_selected)
-            
+
             return predictions
-        
+
         except Exception as e:
             raise CustomException(e, sys)
 
@@ -131,6 +128,7 @@ class CustomData:
         self.LongTerm_Debt = LongTerm_Debt
         self.Noncurrent_Liabilities = Noncurrent_Liabilities
         self.is_bankrupt = is_bankrupt
+        self.prediction = None  # Default to None until prediction is made
 
     def get_data_as_data_frame(self):
         try:

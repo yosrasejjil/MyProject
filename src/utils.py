@@ -6,7 +6,6 @@ import pandas as pd
 import dill  # Importing dill for object serialization
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-
 from src.exception import CustomException
 
 def save_object(file_path, obj):

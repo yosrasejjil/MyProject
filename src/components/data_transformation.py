@@ -162,33 +162,41 @@ class DataTransformation:
         except Exception as e:
             raise CustomException(e, sys)
 
-    ### Features Engineering
-    def financial_ratios_pipeline(self):
+    """ def financial_ratios_pipeline(self):
         try:
             logging.info("Creating financial ratios transformation pipeline")
-
             def compute_financial_ratios(df):
-                logging.info("Computing financial ratios")
-                # Example financial ratio calculations (adjust based on your data)
-                df['R1'] = df['Current_Assets'] / df['Current_liabilities']
+                df1=pd.DataFrame()
+                df1['R1'] = df['Stockholder_Equity'] / df['Liabilities']
+                df1['R2'] = df['Liabilities'] / df['Assets']
+                df1['R3'] = df['Stockholder_Equity'] / df['Assets']
+                df1['R4'] = df['Assets'] / df['Stockholder_Equity']
+                df1['R5'] = df['Cash'] / df['Assets']
+                df1['R6'] = df['Working_capital'] / df['Assets']
+                df1['R7'] = df['Cash'] / df['Revenues']
+                df1['R8'] = df['Current_Assets'] / df['Current_liabilities']
+                df1['R9'] = df['Earning_Before_Interest_And_Taxes'] / df['Revenues']
+                df1['R10'] = df['NetIncome'] / df['Assets']
+                df1['R11'] = df['NetIncome'] / df['Revenues']
+                df1['R12'] = df['NetIncome'] / df['Assets']
+                df1['R13'] = df['Earning_Before_Interest_And_Taxes'] / df['InterestExpense']
+                df1['R14'] = df['LongTerm_Debt'] / df['Assets']
+                df1['R15'] = df['AccountsPayable'] / df['Revenues']
+                df1['R16'] = df['AccountsReceivable'] / df['Liabilities']
 
-                # R2: Debt to Equity Ratio = Liabilities / Stockholder Equity
-                df['R2'] = df['Liabilities'] / df['Stockholder_Equity']
-                # R6: Return on Equity (ROE) = Net Income / Stockholder Equity
-                df['R3'] = df['NetIncome'] / df['Stockholder_Equity']
-
-                # R7: Cash Ratio = Cash / Current Liabilities
-                df['R4'] = df['Cash'] / df['Current_liabilities']
-
-                # R8: Operating Cash Flow to Total Debt Ratio = Net Cash Operating Activities / Total Liabilities
-                df['R5'] = df['NetCash_OperatingActivities'] / df['Liabilities']
-                # R13: Long-Term Debt to Total Capitalization = Long-Term Debt / (Long-Term Debt + Stockholder Equity)
-                df['R6'] = df['LongTerm_Debt'] / (df['LongTerm_Debt'] + df['Stockholder_Equity'])
-
-                # R16: Financing Cash Flow to Total Debt Ratio = Net Cash Financing Activities / Total Liabilities
-                df['R7'] = df['NetCash_FinancingActivities'] / df['Liabilities']
-            
-                return df
+                # AV3: Total Cash
+                df1['AV3'] = df['Cash']
+                
+                # AV4: Operating Cash
+                df1['AV4'] = df['NetCash_OperatingActivities']
+                
+                # AV5: Investing Cash
+                df1['AV5'] = df['NetCash_InvestingActivities']
+                
+                # AV6: Financing Cash
+                df1['AV6'] = df['NetCash_FinancingActivities']
+                
+                return df1
 
             pipeline = Pipeline(steps=[
                 ('financial_ratios', FunctionTransformer(compute_financial_ratios))
@@ -196,19 +204,27 @@ class DataTransformation:
             return pipeline
 
         except Exception as e:
-            raise CustomException(e, sys)
+            raise CustomException(e, sys) """
 
     ### Data Cleaning Pipeline
     def create_cleaning_pipeline(self, missing_value_threshold=55.0):
         try:
+        # Function to drop columns only if they exist in the DataFrame
+            def drop_specified_columns(X, columns_to_drop):
+            # Filter the columns to drop based on those present in the DataFrame
+                existing_columns_to_drop = [col for col in columns_to_drop if col in X.columns]
+                return X.drop(existing_columns_to_drop, axis=1, errors='ignore')
+        
             # Pipeline for cleaning and reducing data
             cleaning_pipeline = Pipeline(steps=[
-                ('drop_specified_columns', FunctionTransformer(self.drop_specified_columns, kw_args={'columns_to_drop': ['cik', 'ticker', 'accessionNo', 'companyName', 'fy', 'fp', 'form', 'filed']})),
+                ('drop_specified_columns', FunctionTransformer(drop_specified_columns, kw_args={'columns_to_drop': ['id','cik', 'ticker', 'accessionNo', 'companyName', 'fy', 'fp', 'form', 'filed']})),
                 ('drop_missing_value_columns', FunctionTransformer(self.drop_missing_value_columns, kw_args={'missing_value_threshold': missing_value_threshold}))
             ])
+        
             return cleaning_pipeline
         except Exception as e:
             raise CustomException(e, sys)
+
         
     def create_missing_value_pipeline(self):
         try:
@@ -282,6 +298,10 @@ class DataTransformation:
 
             #Apply the fitted missing value pipeline on the test data without refitting
             df_minority_test_imputed = missing_value_pipeline.transform(df_minority_test)
+            
+            # Step Save the cleaning pipeline
+            logging.info("Saving missing pipeline")
+            save_object(self.data_transformation_config.missing_path, missing_value_pipeline)
 
             # Convert the imputed test data back to DataFrame with the same columns
             df_minority_test_imputed= pd.DataFrame(df_minority_test_imputed, columns=df_minority_test.columns)
@@ -340,35 +360,56 @@ class DataTransformation:
             logging.info(f"Checking for NaNs in test_combined_scaled data: {test_combined_scaled.isna().sum().sum()}")
             logging.info(f"Checking for NaNs in combined_train_scaled data: {combined_train_scaled.isna().sum().sum()}")
 
-            # Step 13: Prepare the features and target
+            """ 
             input_feature_train_df = combined_train_scaled.drop(columns=[target_column_name])
             target_feature_train_df = combined_train_scaled[target_column_name]
             input_feature_test_df = test_combined_scaled.drop(columns=[target_column_name])
-            target_feature_test_df = test_combined_scaled[target_column_name]
+            target_feature_test_df = test_combined_scaled[target_column_name] """
 
+            
+            
+            # Step 12: Feature engineering
+            logging.info("Starting feature engineering for train and test data")
+            feature_engineering_pipeline = self.financial_ratios_pipeline()
+            train_df_fe = pd.DataFrame(feature_engineering_pipeline.fit_transform(combined_train_scaled),columns=combined_train_scaled.columns)
+            test_df_fe = pd.DataFrame(feature_engineering_pipeline.transform(test_combined_scaled),columns=test_combined_scaled.columns)
+            
+            
+            # Optional: Log the shapes of input and target features
+            logging.info(f" features shape (train): {train_df_fe.shape}")
+            logging.info(f" feature shape (test): {test_df_fe.shape}")
+            
+            logging.info(f"Checking for NaNs in test_combined_scaled data: {train_df_fe.isna().sum().sum()}")
+            logging.info(f"Checking for NaNs in combined_train_scaled data: {test_df_fe.isna().sum().sum()}")
+            
+            # Step 12a: Drop NaN and infinite values from train and test sets
+            logging.info("Dropping NaN and infinite values from the engineered features")
+
+            # Drop NaN and infinite values from the train set
+            train_df_fe.replace([np.inf, -np.inf], np.nan, inplace=True)  # Replace infinite values with NaN
+            train_df_fe.dropna(inplace=True)  # Drop rows with NaN values
+
+            # Drop NaN and infinite values from the test set
+            test_df_fe.replace([np.inf, -np.inf], np.nan, inplace=True)  # Replace infinite values with NaN
+            test_df_fe.dropna(inplace=True)  # Drop rows with NaN values
+
+            # Save the feature engineering pipeline
+            logging.info("Saving feature engineering pipeline")
+            save_object(self.data_transformation_config.feature_engineering_pipeline_path, feature_engineering_pipeline)
+
+
+            # Step 13: Prepare the features and target
+            input_feature_train_df = train_df_fe.drop(columns=[target_column_name])
+            target_feature_train_df = train_df_fe[target_column_name]
+            input_feature_test_df = test_df_fe.drop(columns=[target_column_name])
+            target_feature_test_df = test_df_fe[target_column_name] 
+            
             # Optional: Log the shapes of input and target features
             logging.info(f"Input features shape (train): {input_feature_train_df.shape}")
             logging.info(f"Target feature shape (train): {target_feature_train_df.shape}")
             logging.info(f"Input features shape (test): {input_feature_test_df.shape}")
             logging.info(f"Target feature shape (test): {target_feature_test_df.shape}")
 
-            """ 
-            # Step 11: Feature engineering
-            logging.info("Starting feature engineering for train and test data")
-            feature_engineering_pipeline = self.financial_ratios_pipeline()
-            train_df_fe = feature_engineering_pipeline.fit_transform(combined_train_scaled)
-            test_df_fe = feature_engineering_pipeline.transform(test_combined_scaled)
-
-            # Step 12: Save the feature engineering pipeline
-            logging.info("Saving feature engineering pipeline")
-            save_object(self.data_transformation_config.feature_engineering_pipeline_path, feature_engineering_pipeline)
-
-            # Step 13: Prepare the features and target
-            input_feature_train_df = train_df_fe.drop(columns=[target_column_name])
-            target_feature_train_df = train_df_fe[target_column_name]
-            input_feature_test_df = test_df_fe.drop(columns=[target_column_name])
-            target_feature_test_df = test_df_fe[target_column_name] """
-            
             # Step 14: Apply selected feature selection technique
             logging.info(f"Applying feature selection method: {self.method}")
 
