@@ -4,55 +4,83 @@ import pandas as pd
 from src.exception import CustomException
 from src.utils import load_object
 from src.logger import logging
+import numpy as np
+import pandas as pd
 
 class PredictPipeline:
     def __init__(self):
-        pass
+        # Load all preprocessing objects and model during initialization
+        self.cleaning_pipeline = load_object(file_path=os.path.join("artifacts", "cleaning_pipeline.pkl"))
+        self.eng_pipeline = load_object(file_path=os.path.join("artifacts", "feature_engineering.pkl"))
+        self.missing_pipeline = load_object(file_path=os.path.join("artifacts", "preprocessor.pkl"))
+        self.scaling_pipeline = load_object(file_path=os.path.join("artifacts", "scaling_pipeline.pkl"))
+        self.feature_selection_pipeline = load_object(file_path=os.path.join("artifacts", "feature_selection.pkl"))
+        self.model = load_object(file_path=os.path.join("artifacts", "classification_model.pkl"))
+
+        # Define expected columns from training, without `is_bankrupt`
+        """    self.expected_columns = [
+            "cik", "companyName", "ticker", "accessionNo", "Assets", "fy", "fp", "form", "filed",
+            "Current_Assets", "Current_liabilities", "Stockholder_Equity", "Liabilities_And_StockholderEquity",
+            "Earning_Before_Interest_And_Taxes", "Retained_Earnings", "Revenues", "Working_capital", "Liabilities",
+            "NetCash_OperatingActivities", "NetCash_InvestingActivities", "NetCash_FinancingActivities", "Cash",
+            "AccountsReceivable", "Inventory", "Current_Other_Assets", "Noncurrent_Assets", "Intangible_Assets",
+            "AccountsPayable", "NetIncome", "GrossProfit", "Operating_Expenses", "Nonoperating_Income",
+            "InterestExpense", "ShortTerm_Debt", "LongTerm_Debt", "Noncurrent_Liabilities"
+        ] """
 
     def predict(self, features):
         try:
-            logging.info(f"Input DataFrame columns: {features.columns.tolist()}")
+            logging.info(f"Original DataFrame columns: {features.columns.tolist()}")
 
-            # Paths to the preprocessing steps and classification model pickle files
-            cleaning_pipeline_path = os.path.join("artifacts", "cleaning_pipeline.pkl")
-            scaling_pipeline_path = os.path.join('artifacts', "scaling_pipeline.pkl")
-            feature_selection_pipeline_path = os.path.join('artifacts', "feature_selection.pkl")
-            model_path = os.path.join("artifacts", "classification_model.pkl")
+            # Reindex to match expected columns without is_bankrupt
+            #features = features.reindex(columns=self.expected_columns, fill_value=0)
+            logging.info(f"DataFrame columns after reindexing: {features.columns.tolist()}")
 
-            print("Before Loading")
+            # Step 1: Clean the data
+            data_cleaned = self.cleaning_pipeline.transform(features)
+            if isinstance(data_cleaned, np.ndarray):  # Convert to DataFrame if ndarray
+                data_cleaned = pd.DataFrame(data_cleaned, columns=features.columns)
+            logging.info(f"Data shape after cleaning: {data_cleaned.columns.tolist()}")
 
-            # Load all preprocessing objects and model
-            cleaning_pipeline = load_object(file_path=cleaning_pipeline_path)
-            scaling_pipeline = load_object(file_path=scaling_pipeline_path)
-            feature_selection_pipeline = load_object(file_path=feature_selection_pipeline_path)
-            model = load_object(file_path=model_path)
+            # Step 2: Handle missing data
+            data_miss = self.missing_pipeline.transform(data_cleaned)
+            if isinstance(data_miss, np.ndarray):
+                data_miss = pd.DataFrame(data_miss, columns=data_cleaned.columns)
+            logging.info(f"Data shape after missing data handling: {data_miss.columns.tolist()}")
 
-            print("After Loading")
+            # Step 3: Scale data
+            data_scaled = self.scaling_pipeline.transform(data_miss)
+            if isinstance(data_scaled, np.ndarray):
+                data_scaled = pd.DataFrame(data_scaled, columns=data_miss.columns)
+            logging.info(f"Data shape after scaling: {data_scaled.columns.tolist()}")
 
-            # Step 1: Standardize column names
-            # Convert all column names to lowercase with underscores for consistency
-            features.columns = features.columns.str.lower().str.replace(' ', '_')
+            # Step 4: Apply feature engineering
+            data_eng = self.eng_pipeline.transform(data_scaled)
+            if isinstance(data_eng, np.ndarray):
+                data_eng = pd.DataFrame(data_eng, columns=data_scaled.columns)
+            logging.info(f"Data shape after feature engineering: {data_eng.shape}")
+            logging.info(f"Feature-engineered columns: {data_eng.shape[1]}")
 
-            # Step 2: Clean the data
-            data_cleaned = cleaning_pipeline.transform(features)
+            # Step 5: Feature selection
+            data_selected = self.feature_selection_pipeline.transform(data_eng)
+            if isinstance(data_selected, np.ndarray):
+                data_selected = pd.DataFrame(data_selected)
+            logging.info(f"Data shape after feature selection: {data_selected.shape}")
 
-            # Step 3: Scale the data
-            data_scaled = scaling_pipeline.transform(data_cleaned)
-
-            # Step 4: Apply feature selection
-            data_selected = feature_selection_pipeline.transform(data_scaled)
-
-            # Step 5: Make predictions with the classification model
-            predictions = model.predict(data_selected)
+            # Step 6: Make predictions
+            predictions = self.model.predict(data_selected)
+            logging.info(f"Prediction results: {predictions}")
 
             return predictions
 
         except Exception as e:
             raise CustomException(e, sys)
 
+
+
 class CustomData:
     def __init__(self, 
-                 cik: str,
+                 id: str,
                  companyName: str,
                  ticker: str,
                  accessionNo: str,
@@ -60,38 +88,38 @@ class CustomData:
                  fp: str,
                  form: str,
                  filed: str,
-                 Assets: float,
-                 Current_Assets: float,
-                 Current_liabilities: float,
-                 Stockholder_Equity: float,
-                 Liabilities_And_StockholderEquity: float,
-                 Earning_Before_Interest_And_Taxes: float,
-                 Retained_Earnings: float,
-                 Revenues: float,
-                 Working_capital: float,
-                 Liabilities: float,
-                 NetCash_OperatingActivities: float,
-                 NetCash_InvestingActivities: float,
-                 NetCash_FinancingActivities: float,
-                 Cash: float,
-                 AccountsReceivable: float,
-                 Inventory: float,
-                 Current_Other_Assets: float,
-                 Noncurrent_Assets: float,
-                 Intangible_Assets: float,
-                 AccountsPayable: float,
-                 NetIncome: float,
-                 GrossProfit: float,
-                 Operating_Expenses: float,
-                 Nonoperating_Income: float,
-                 InterestExpense: float,
-                 ShortTerm_Debt: float,
-                 LongTerm_Debt: float,
-                 Noncurrent_Liabilities: float,
-                 is_bankrupt: int  # Assuming this is the target (bankruptcy flag)
+                 assets: float,
+                 currentAssets: float,
+                 currentLiabilities: float,
+                 stockholdersEquity: float,
+                 liabilitiesAndStockholdersEquity: float,
+                 earningBeforeInterestAndTaxes: float,
+                 retainedEarnings: float,
+                 revenues: float,
+                 workingCapital: float,
+                 liabilities: float,
+                 netCashOperatingActivities: float,
+                 netCashInvestingActivities: float,
+                 netCashFinancingActivities: float,
+                 cash: float,
+                 accountsReceivable: float,
+                 inventory: float,
+                 currentOtherAssets: float,
+                 noncurrentAssets: float,
+                 intangibleAssets: float,
+                 accountsPayable: float,
+                 netIncome: float,
+                 grossProfit: float,
+                 operatingExpenses: float,
+                 nonoperatingIncome: float,
+                 interestExpense: float,
+                 shortTermDebt: float,
+                 longTermDebt: float,
+                 noncurrentLiabilities: float,
+                 prediction: float = None  # Default to None
                 ):
         # Initialize all attributes with provided values
-        self.cik = cik
+        self.cik = id
         self.companyName = companyName
         self.ticker = ticker
         self.accessionNo = accessionNo
@@ -99,40 +127,39 @@ class CustomData:
         self.fp = fp
         self.form = form
         self.filed = filed
-        self.Assets = Assets
-        self.Current_Assets = Current_Assets
-        self.Current_liabilities = Current_liabilities
-        self.Stockholder_Equity = Stockholder_Equity
-        self.Liabilities_And_StockholderEquity = Liabilities_And_StockholderEquity
-        self.Earning_Before_Interest_And_Taxes = Earning_Before_Interest_And_Taxes
-        self.Retained_Earnings = Retained_Earnings
-        self.Revenues = Revenues
-        self.Working_capital = Working_capital
-        self.Liabilities = Liabilities
-        self.NetCash_OperatingActivities = NetCash_OperatingActivities
-        self.NetCash_InvestingActivities = NetCash_InvestingActivities
-        self.NetCash_FinancingActivities = NetCash_FinancingActivities
-        self.Cash = Cash
-        self.AccountsReceivable = AccountsReceivable
-        self.Inventory = Inventory
-        self.Current_Other_Assets = Current_Other_Assets
-        self.Noncurrent_Assets = Noncurrent_Assets
-        self.Intangible_Assets = Intangible_Assets
-        self.AccountsPayable = AccountsPayable
-        self.NetIncome = NetIncome
-        self.GrossProfit = GrossProfit
-        self.Operating_Expenses = Operating_Expenses
-        self.Nonoperating_Income = Nonoperating_Income
-        self.InterestExpense = InterestExpense
-        self.ShortTerm_Debt = ShortTerm_Debt
-        self.LongTerm_Debt = LongTerm_Debt
-        self.Noncurrent_Liabilities = Noncurrent_Liabilities
-        self.is_bankrupt = is_bankrupt
-        self.prediction = None  # Default to None until prediction is made
+        self.Assets = assets
+        self.Current_Assets = currentAssets
+        self.Current_liabilities = currentLiabilities
+        self.Stockholder_Equity = stockholdersEquity
+        self.Liabilities_And_StockholderEquity = liabilitiesAndStockholdersEquity
+        self.Earning_Before_Interest_And_Taxes = earningBeforeInterestAndTaxes
+        self.Retained_Earnings = retainedEarnings
+        self.Revenues = revenues
+        self.Working_capital = workingCapital
+        self.Liabilities = liabilities
+        self.NetCash_OperatingActivities = netCashOperatingActivities
+        self.NetCash_InvestingActivities = netCashInvestingActivities
+        self.NetCash_FinancingActivities = netCashFinancingActivities
+        self.Cash = cash
+        self.AccountsReceivable = accountsReceivable
+        self.Inventory = inventory
+        self.Current_Other_Assets = currentOtherAssets
+        self.Noncurrent_Assets = noncurrentAssets
+        self.Intangible_Assets = intangibleAssets
+        self.AccountsPayable = accountsPayable
+        self.NetIncome = netIncome
+        self.GrossProfit = grossProfit
+        self.Operating_Expenses = operatingExpenses
+        self.Nonoperating_Income = nonoperatingIncome
+        self.InterestExpense = interestExpense
+        self.ShortTerm_Debt = shortTermDebt
+        self.LongTerm_Debt = longTermDebt
+        self.Noncurrent_Liabilities = noncurrentLiabilities
+        self.prediction = prediction  # Optional; used only for storage after inference
 
     def get_data_as_data_frame(self):
         try:
-            # Create a dictionary with all attributes as key-value pairs
+            # Create a dictionary with all attributes as key-value pairs, excluding `prediction`
             custom_data_input_dict = {
                 "cik": [self.cik],
                 "companyName": [self.companyName],
@@ -170,7 +197,6 @@ class CustomData:
                 "ShortTerm_Debt": [self.ShortTerm_Debt],
                 "LongTerm_Debt": [self.LongTerm_Debt],
                 "Noncurrent_Liabilities": [self.Noncurrent_Liabilities],
-                "is_bankrupt": [self.is_bankrupt]
             }
 
             # Return a DataFrame created from the dictionary

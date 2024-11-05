@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 import pandas as pd
-from src.pipeline import PredictPipeline  # Import your pipeline class here
+from src.pipeline import PredictPipeline
+from src.pipeline.predict_pipeline import CustomData  # Import your pipeline class here
+
 app = Flask(__name__)
 
 # Initialize your prediction pipeline
@@ -11,13 +13,17 @@ def predict():
     try:
         # Get JSON data from the request
         data = request.get_json()
-        
-        # Convert the JSON into a Pandas DataFrame
-        input_data = pd.DataFrame([data])
-        
+
+        # Remove 'prediction' from the data dictionary if it exists
+        data.pop('prediction', None)
+
+        # Create an instance of CustomData with the filtered data
+        custom_data_instance = CustomData(**data)
+        input_data = custom_data_instance.get_data_as_data_frame()
+
         # Make predictions using your pipeline
         predictions = predict_pipeline.predict(input_data)
-        
+
         # Send back the predictions as a JSON response
         return jsonify({
             'predictions': predictions.tolist()
@@ -29,6 +35,7 @@ def predict():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)  # Flask will run on port 5000
+
 """ 
 import os
 import sys
@@ -224,7 +231,7 @@ def predict_datapoint():
     try:
         # Collect data from the request
         data = CustomData(
-            cik=request.json.get('cik'),
+            cik=request.json.get('i'),
             companyName=request.json.get('companyName'),
             ticker=request.json.get('ticker'),
             accessionNo=request.json.get('accessionNo'),

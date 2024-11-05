@@ -58,6 +58,7 @@ if __name__=="__main__":
     
     data_transformer = DataTransformation(method='mutual_info', k_best=8)
     X_train, y_train, X_test, y_test=data_transformer.initiate_data_transformation(train_data,test_data)
+    print(f"starting moel trainer")
 
     modeltrainer=ModelTrainer()
     print(modeltrainer.initiate_model_trainer(X_train, y_train, X_test, y_test)) 

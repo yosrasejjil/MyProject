@@ -1,3 +1,4 @@
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FunctionTransformer, Pipeline
 from sklearn.preprocessing import RobustScaler
 from src.logger import logging
@@ -162,63 +163,101 @@ class DataTransformation:
         except Exception as e:
             raise CustomException(e, sys)
 
-    """ def financial_ratios_pipeline(self):
+    def financial_ratios_pipeline(self):
         try:
             logging.info("Creating financial ratios transformation pipeline")
             def compute_financial_ratios(df):
-                df1=pd.DataFrame()
-                df1['R1'] = df['Stockholder_Equity'] / df['Liabilities']
-                df1['R2'] = df['Liabilities'] / df['Assets']
-                df1['R3'] = df['Stockholder_Equity'] / df['Assets']
-                df1['R4'] = df['Assets'] / df['Stockholder_Equity']
-                df1['R5'] = df['Cash'] / df['Assets']
-                df1['R6'] = df['Working_capital'] / df['Assets']
-                df1['R7'] = df['Cash'] / df['Revenues']
-                df1['R8'] = df['Current_Assets'] / df['Current_liabilities']
-                df1['R9'] = df['Earning_Before_Interest_And_Taxes'] / df['Revenues']
-                df1['R10'] = df['NetIncome'] / df['Assets']
-                df1['R11'] = df['NetIncome'] / df['Revenues']
-                df1['R12'] = df['NetIncome'] / df['Assets']
-                df1['R13'] = df['Earning_Before_Interest_And_Taxes'] / df['InterestExpense']
-                df1['R14'] = df['LongTerm_Debt'] / df['Assets']
-                df1['R15'] = df['AccountsPayable'] / df['Revenues']
-                df1['R16'] = df['AccountsReceivable'] / df['Liabilities']
+                # df=pd.DataFrame()
+                    # R1: Current Ratio = Current Assets / Current Liabilities
+                    df['R1'] = df['Current_Assets'] / df['Current_liabilities']
 
-                # AV3: Total Cash
-                df1['AV3'] = df['Cash']
-                
-                # AV4: Operating Cash
-                df1['AV4'] = df['NetCash_OperatingActivities']
-                
-                # AV5: Investing Cash
-                df1['AV5'] = df['NetCash_InvestingActivities']
-                
-                # AV6: Financing Cash
-                df1['AV6'] = df['NetCash_FinancingActivities']
-                
-                return df1
+                    # R2: Debt to Equity Ratio = Liabilities / Stockholder Equity
+                    df['R2'] = df['Liabilities'] / df['Stockholder_Equity']
 
+                    # R3: Working Capital Ratio = Working Capital / Total Assets
+                    df['R3'] = df['Working_capital'] / df['Assets']
+
+                    # R4: Net Income Margin = Net Income / Revenues
+                    df['R4'] = df['NetIncome'] / df['Revenues']
+
+                    # R5: Return on Assets (ROA) = Net Income / Total Assets
+                    df['R5'] = df['NetIncome'] / df['Assets']
+
+                    # R6: Return on Equity (ROE) = Net Income / Stockholder Equity
+                    df['R6'] = df['NetIncome'] / df['Stockholder_Equity']
+
+                    # R7: Cash Ratio = Cash / Current Liabilities
+                    df['R7'] = df['Cash'] / df['Current_liabilities']
+
+                    # R8: Operating Cash Flow to Total Debt Ratio = Net Cash Operating Activities / Total Liabilities
+                    df['R8'] = df['NetCash_OperatingActivities'] / df['Liabilities']
+
+                    # R9: Interest Coverage Ratio = Earnings Before Interest and Taxes (EBIT) / Interest Expense
+                    df['R9'] = df['Earning_Before_Interest_And_Taxes'] / df['InterestExpense']
+
+                    # R10: Debt to Assets Ratio = Liabilities / Total Assets
+                    df['R10'] = df['Liabilities'] / df['Assets']
+
+                    # R11: Net Working Capital to Revenues = Working Capital / Revenues
+                    df['R11'] = df['Working_capital'] / df['Revenues']
+
+                    # R12: Retained Earnings to Assets Ratio = Retained Earnings / Total Assets
+                    df['R12'] = df['Retained_Earnings'] / df['Assets']
+
+                    # R13: Long-Term Debt to Total Capitalization = Long-Term Debt / (Long-Term Debt + Stockholder Equity)
+                    df['R13'] = df['LongTerm_Debt'] / (df['LongTerm_Debt'] + df['Stockholder_Equity'])
+
+                    # R14: Cash Flow to Sales Ratio = Net Cash Operating Activities / Revenues
+                    df['R14'] = df['NetCash_OperatingActivities'] / df['Revenues']
+
+                    # R15: Investing Cash Flow to Assets Ratio = Net Cash Investing Activities / Total Assets
+                    df['R15'] = df['NetCash_InvestingActivities'] / df['Assets']
+
+                    # R16: Financing Cash Flow to Total Debt Ratio = Net Cash Financing Activities / Total Liabilities
+                    df['R16'] = df['NetCash_FinancingActivities'] / df['Liabilities']
+
+                    return df
+
+                # # AV3: Total Cash
+                # df['AV3'] = df['Cash']
+                
+                # # AV4: Operating Cash
+                # df['AV4'] = df['NetCash_OperatingActivities']
+                
+                # # AV5: Investing Cash
+                # df['AV5'] = df['NetCash_InvestingActivities']
+                
+                # # AV6: Financing Cash
+                # df['AV6'] = df['NetCash_FinancingActivities']
+            
             pipeline = Pipeline(steps=[
                 ('financial_ratios', FunctionTransformer(compute_financial_ratios))
             ])
             return pipeline
 
         except Exception as e:
-            raise CustomException(e, sys) """
+            raise CustomException(e, sys) 
 
-    ### Data Cleaning Pipeline
     def create_cleaning_pipeline(self, missing_value_threshold=55.0):
         try:
-        # Function to drop columns only if they exist in the DataFrame
+            # Function to drop columns only if they exist in the DataFrame
             def drop_specified_columns(X, columns_to_drop):
-            # Filter the columns to drop based on those present in the DataFrame
+                # Filter the columns to drop based on those present in the DataFrame
                 existing_columns_to_drop = [col for col in columns_to_drop if col in X.columns]
                 return X.drop(existing_columns_to_drop, axis=1, errors='ignore')
         
             # Pipeline for cleaning and reducing data
             cleaning_pipeline = Pipeline(steps=[
-                ('drop_specified_columns', FunctionTransformer(drop_specified_columns, kw_args={'columns_to_drop': ['id','cik', 'ticker', 'accessionNo', 'companyName', 'fy', 'fp', 'form', 'filed']})),
-                ('drop_missing_value_columns', FunctionTransformer(self.drop_missing_value_columns, kw_args={'missing_value_threshold': missing_value_threshold}))
+                ('drop_specified_columns', FunctionTransformer(
+                    drop_specified_columns, 
+                    kw_args={'columns_to_drop': [
+                        'id', 'cik', 'ticker', 'accessionNo', 'companyName', 'fy', 'fp', 'form', 'filed', 
+                        'Noncurrent_Assets', 'Noncurrent_Liabilities', 'Current_Other_Assets', 'ShortTerm_Debt', 
+                        'Nonoperating_Income', 'Intangible_Assets', 'GrossProfit', 'Inventory', 'Operating_Expenses'
+                    ]})
+                ),
+                # Uncomment and adjust the following line if you need to drop columns based on missing values
+                # ('drop_missing_value_columns', FunctionTransformer(self.drop_missing_value_columns, kw_args={'missing_value_threshold': missing_value_threshold}))
             ])
         
             return cleaning_pipeline
@@ -263,154 +302,125 @@ class DataTransformation:
             # Step 3: Create a cleaning pipeline
             logging.info("Creating a cleaning pipeline")
             cleaning_pipeline = self.create_cleaning_pipeline(missing_value_threshold=55.0)
-
+            
             # Step 4: Fit the cleaning pipeline on train data and transform both train and test data
             logging.info("Fitting and transforming train data with cleaning pipeline")
             train_df_cleaned = cleaning_pipeline.fit_transform(train_df)
             logging.info("Transforming test data with cleaning pipeline")
             test_df_cleaned = cleaning_pipeline.transform(test_df)
+            logging.info(f"Data shape after missing data handling: {train_df_cleaned.columns.tolist()}")
+            logging.info(f"Data : {train_df_cleaned.columns.tolist()}")
 
             # Step 5: Save the cleaning pipeline
             logging.info("Saving cleaning pipeline")
             save_object(self.data_transformation_config.cleaning_pipeline_path, cleaning_pipeline)
-
             # Step 6: Define the target column
             logging.info("Defining target column")
             target_column_name = 'is_bankrupt'
 
             # Step 7: Split majority and minority classes in train and test data
             logging.info("Splitting majority and minority classes in train data")
-            df_majority_train = train_df_cleaned[train_df_cleaned[target_column_name] == 0].dropna()
-            df_minority_train = train_df_cleaned[train_df_cleaned[target_column_name] == 1]
+            df_majority_train = train_df_cleaned[train_df_cleaned[target_column_name] == 0].dropna().reset_index(drop=True)
+            df_minority_train = train_df_cleaned[train_df_cleaned[target_column_name] == 1].reset_index(drop=True)
 
             logging.info("Splitting majority and minority classes in test data")
-            df_majority_test = test_df_cleaned[test_df_cleaned[target_column_name] == 0].dropna()
-            df_minority_test = test_df_cleaned[test_df_cleaned[target_column_name] == 1]
+            df_majority_test = test_df_cleaned[test_df_cleaned[target_column_name] == 0].dropna().reset_index(drop=True)
+            df_minority_test = test_df_cleaned[test_df_cleaned[target_column_name] == 1].reset_index(drop=True)
+
+            # Separate the target column from minority and majority data
+            y_train_majority = df_majority_train[target_column_name]
+            y_train_minority = df_minority_train[target_column_name]
+
+            y_test_majority = df_majority_test[target_column_name]
+            y_test_minority = df_minority_test[target_column_name]
+
+            # Drop the target column before processing
+            df_majority_train = df_majority_train.drop(columns=[target_column_name])
+            df_minority_train = df_minority_train.drop(columns=[target_column_name])
+
+            df_majority_test = df_majority_test.drop(columns=[target_column_name])
+            df_minority_test = df_minority_test.drop(columns=[target_column_name])
+
             # Step 8: Handle missing data in the minority class (train)
             logging.info("Handling missing values for minority class in train data")
             missing_value_pipeline = self.create_missing_value_pipeline()
 
             # Fit the pipeline on the minority class training data
             df_minority_train_imputed = missing_value_pipeline.fit_transform(df_minority_train)
-
-            # Convert the imputed data back to DataFrame with the same columns
             df_minority_train_imputed = pd.DataFrame(df_minority_train_imputed, columns=df_minority_train.columns)
 
-            #Apply the fitted missing value pipeline on the test data without refitting
+            # Transform the minority class test data
             df_minority_test_imputed = missing_value_pipeline.transform(df_minority_test)
-            
-            # Step Save the cleaning pipeline
-            logging.info("Saving missing pipeline")
+            df_minority_test_imputed = pd.DataFrame(df_minority_test_imputed, columns=df_minority_test.columns)
             save_object(self.data_transformation_config.missing_path, missing_value_pipeline)
 
-            # Convert the imputed test data back to DataFrame with the same columns
-            df_minority_test_imputed= pd.DataFrame(df_minority_test_imputed, columns=df_minority_test.columns)
-            # Combine the majority and imputed minority data
+            # Step 9: Combine majority and imputed minority data
             combined_train_data = pd.concat([df_majority_train, df_minority_train_imputed], ignore_index=True)
+            combined_test_data = pd.concat([df_majority_test, df_minority_test_imputed], ignore_index=True)
 
-            # Optional: Log the shape of the combined data for verification
-            logging.info(f"Shape of df_majority_train: {df_majority_train.shape}")
-            logging.info(f"Shape of df_minority_train_imputed: {df_minority_train_imputed.shape}")
+            # Combine target values for train and test data
+            y_train = pd.concat([y_train_majority, y_train_minority], ignore_index=True)
+            y_test = pd.concat([y_test_majority, y_test_minority], ignore_index=True)
 
-            logging.info("Checking for null values in majority and minority class data")
+            # Step 10: Drop NaNs in features and targets to maintain consistency
+            combined_train_data.dropna(inplace=True)
+            y_train = y_train[combined_train_data.index]
 
-            # Log         
-            logging.info(f"Checking for NaNs in df_minority_train_imputed data: {df_minority_train_imputed.isna().sum().sum()}")
-            logging.info(f"Checking for NaNs in df_minority_train_imputed data: {df_majority_train.isna().sum().sum()}")
-            logging.info(f"Checking for NaNs in df_majority_test data: {df_majority_test.isna().sum().sum()}")
-            logging.info(f"Checking for NaNs in df_minority_test data: {df_minority_test_imputed.isna().sum().sum()}")
+            combined_test_data.dropna(inplace=True)
+            y_test = y_test[combined_test_data.index]
 
-            # Step 9: Combine majority and minority classes before scaling
-            logging.info("Combining majority and minority class data")
-            combined_train_data = pd.concat([df_majority_train, df_minority_train_imputed])
-
-            # Resetting index for the combined DataFrame
-            combined_train_data.reset_index(drop=True, inplace=True)
-
-            # Step 10: Apply scaling to the combined data
+            # Proceed with scaling and feature engineering as usual
             logging.info("Applying scaling to combined training data")
             scaling_pipeline = self.create_scaling_pipeline()
-
-            # Fit the scaling pipeline on the combined training data
             combined_train_scaled = scaling_pipeline.fit_transform(combined_train_data)
-
-            # Convert scaled data back to DataFrame
             combined_train_scaled = pd.DataFrame(combined_train_scaled, columns=combined_train_data.columns)
 
-            # Save the fitted scaling pipeline to a pickle file
+            # Scale the combined test data
+            test_combined_scaled = scaling_pipeline.transform(combined_test_data)
+            test_combined_scaled = pd.DataFrame(test_combined_scaled, columns=combined_test_data.columns)
+
+            # Save the scaling pipeline
             logging.info("Saving scaling pipeline")
             save_object(self.data_transformation_config.scaling_pipeline_path, scaling_pipeline)
 
-            # Step 11: Prepare the scaled training and testing datasets
-            logging.info("Preparing test dataset")
-            test_combined_data = pd.concat([df_majority_test, df_minority_test_imputed])
-
-            # Resetting index for the combined test DataFrame
-            test_combined_data.reset_index(drop=True, inplace=True)
-
-            # Scale the combined test data
-            test_combined_scaled = scaling_pipeline.transform(test_combined_data)
-
-            # Convert test scaled data back to DataFrame
-            test_combined_scaled = pd.DataFrame(test_combined_scaled, columns=test_combined_data.columns)
-
-            # Debug: Log the shape and columns of the combined DataFrames
-            logging.info(f"Shape of combined_train_scaled: {combined_train_scaled.shape}")
-            logging.info(f"Shape of test_combined_scaled: {test_combined_scaled.shape}")
-            logging.info(f"Checking for NaNs in test_combined_scaled data: {test_combined_scaled.isna().sum().sum()}")
-            logging.info(f"Checking for NaNs in combined_train_scaled data: {combined_train_scaled.isna().sum().sum()}")
-
-            """ 
-            input_feature_train_df = combined_train_scaled.drop(columns=[target_column_name])
-            target_feature_train_df = combined_train_scaled[target_column_name]
-            input_feature_test_df = test_combined_scaled.drop(columns=[target_column_name])
-            target_feature_test_df = test_combined_scaled[target_column_name] """
-
-            
-            
-            # Step 12: Feature engineering
+            # Feature engineering without the target column
             logging.info("Starting feature engineering for train and test data")
-            feature_engineering_pipeline = self.financial_ratios_pipeline()
-            train_df_fe = pd.DataFrame(feature_engineering_pipeline.fit_transform(combined_train_scaled),columns=combined_train_scaled.columns)
-            test_df_fe = pd.DataFrame(feature_engineering_pipeline.transform(test_combined_scaled),columns=test_combined_scaled.columns)
-            
-            
-            # Optional: Log the shapes of input and target features
+            feature_engineering_pipeline = self.financial_ratios_pipeline()            
+            train_df_fe = pd.DataFrame(feature_engineering_pipeline.fit_transform(combined_train_scaled), columns=combined_train_scaled.columns)
+            test_df_fe = pd.DataFrame(feature_engineering_pipeline.transform(test_combined_scaled), columns=test_combined_scaled.columns)
+            save_object(self.data_transformation_config.feature_engineering_pipeline_path, feature_engineering_pipeline)
+
             logging.info(f" features shape (train): {train_df_fe.shape}")
             logging.info(f" feature shape (test): {test_df_fe.shape}")
             
             logging.info(f"Checking for NaNs in test_combined_scaled data: {train_df_fe.isna().sum().sum()}")
             logging.info(f"Checking for NaNs in combined_train_scaled data: {test_df_fe.isna().sum().sum()}")
             
-            # Step 12a: Drop NaN and infinite values from train and test sets
+            #12a: Drop NaN and infinite values from train and test sets
             logging.info("Dropping NaN and infinite values from the engineered features")
 
-            # Drop NaN and infinite values from the train set
-            train_df_fe.replace([np.inf, -np.inf], np.nan, inplace=True)  # Replace infinite values with NaN
-            train_df_fe.dropna(inplace=True)  # Drop rows with NaN values
+            # Replace infinite values with NaN, then drop NaN values in train and test feature sets
+            train_df_fe.replace([np.inf, -np.inf], np.nan, inplace=True)
+            train_df_fe.dropna(inplace=True)
+            test_df_fe.replace([np.inf, -np.inf], np.nan, inplace=True)
+            test_df_fe.dropna(inplace=True)
 
-            # Drop NaN and infinite values from the test set
-            test_df_fe.replace([np.inf, -np.inf], np.nan, inplace=True)  # Replace infinite values with NaN
-            test_df_fe.dropna(inplace=True)  # Drop rows with NaN values
+           
+            # Align target feature DataFrames with the cleaned input features
+            target_feature_train_df = y_train.loc[train_df_fe.index].reset_index(drop=True)
+            target_feature_test_df = y_test.loc[test_df_fe.index].reset_index(drop=True)
 
-            # Save the feature engineering pipeline
-            logging.info("Saving feature engineering pipeline")
-            save_object(self.data_transformation_config.feature_engineering_pipeline_path, feature_engineering_pipeline)
+            # Log the shapes to ensure alignment
+            logging.info(f"Input features shape (train) after NaN removal: {train_df_fe.shape}")
+            logging.info(f"Target features shape (train) after NaN removal: {target_feature_train_df.shape}")
+            logging.info(f"Input features shape (test) after NaN removal: {test_df_fe.shape}")
+            logging.info(f"Target features shape (test) after NaN removal: {target_feature_test_df.shape}")
 
+            # Set up the final input features for modeling
+            input_feature_train_df = train_df_fe
+            input_feature_test_df = test_df_fe
 
-            # Step 13: Prepare the features and target
-            input_feature_train_df = train_df_fe.drop(columns=[target_column_name])
-            target_feature_train_df = train_df_fe[target_column_name]
-            input_feature_test_df = test_df_fe.drop(columns=[target_column_name])
-            target_feature_test_df = test_df_fe[target_column_name] 
-            
-            # Optional: Log the shapes of input and target features
-            logging.info(f"Input features shape (train): {input_feature_train_df.shape}")
-            logging.info(f"Target feature shape (train): {target_feature_train_df.shape}")
-            logging.info(f"Input features shape (test): {input_feature_test_df.shape}")
-            logging.info(f"Target feature shape (test): {target_feature_test_df.shape}")
-
-            # Step 14: Apply selected feature selection technique
+            # Now proceed to feature selection as usual
             logging.info(f"Applying feature selection method: {self.method}")
 
             if self.method == 'pearson':
@@ -425,69 +435,99 @@ class DataTransformation:
                 logging.error(f"Feature selection method '{self.method}' is not recognized.")
                 raise ValueError(f"Feature selection method '{self.method}' is not recognized.")
 
-            # Fit and transform feature selection pipeline
+            # Fit and transform feature selection pipeline on the aligned training data
             logging.info("Fitting feature selection pipeline on training data")
             input_feature_train_selected = feature_selection_pipeline.fit_transform(input_feature_train_df, target_feature_train_df)
 
             logging.info("Transforming test data with the fitted feature selection pipeline")
-            logging.info(f"Shape of input_feature_train_df: {input_feature_train_df.shape}")
-            logging.info(f"Shape of input_feature_test_df: {input_feature_test_df.shape}")
-            logging.info(f"Columns in train: {input_feature_train_df.columns.tolist()}")
-            logging.info(f"Columns in test: {input_feature_test_df.columns.tolist()}")
-            logging.info(f"Checking for NaNs in test data: {input_feature_test_df.isna().sum().sum()}")
-            logging.info(f"Checking for Inf values in test data: {np.isinf(input_feature_test_df).sum().sum()}")
-
             input_feature_test_selected = feature_selection_pipeline.transform(input_feature_test_df)
-            
-            # Step 15: Save the feature selection object
 
+            # Save the feature selection object
             logging.info(f"Saving feature selection object for method: {self.method}")
             save_object(self.data_transformation_config.feature_selec_obj_path, feature_selection_pipeline)
 
+
             # Step 16: Perform undersampling using KMeans clustering on successful class
-            logging.info("Performing KMeans clustering and undersampling on successful class (majority class)")
-            X_train_successful = pd.DataFrame(input_feature_train_selected[target_feature_train_df == 0])
-            y_train_successful = pd.DataFrame(target_feature_train_df[target_feature_train_df == 0])
+            # Define constants
+            n_clusters = 6  # Number of clusters for KMeans
+            n_samples_per_cluster = 50  # Desired number of samples per cluster
+            # Convertir les ndarrays en DataFrame avant la concaténation
+            input_feature_train_selected = pd.DataFrame(input_feature_train_selected)
+            input_feature_test_selected = pd.DataFrame(input_feature_test_selected)
 
-            X_train_ban = pd.DataFrame(input_feature_train_selected[target_feature_train_df == 1])
-            y_train_ban = pd.DataFrame(target_feature_train_df[target_feature_train_df == 1])
+            # Vérifier les dimensions pour s'assurer qu'elles sont cohérentes
+            logging.info(f"Shape of input_feature_train_selected: {input_feature_train_selected.shape}")
+            logging.info(f"Shape of input_feature_test_selected: {input_feature_test_selected.shape}")
 
-            n_clusters = 6  # You can adjust this number depending on your data
-            kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-            X_train_successful['cluster'] = kmeans.fit_predict(X_train_successful)
+            # Combine the training and test datasets
+            X_combined = pd.concat([input_feature_train_selected, input_feature_test_selected]).reset_index(drop=True)
+            y_combined = pd.concat([target_feature_train_df, target_feature_test_df]).reset_index(drop=True)
 
-            # For each cluster, undersample to get a balanced subset
-            n_samples_per_cluster = 33
+            # Separate the majority and minority classes
+            X_majority = X_combined[y_combined == 0].copy()
+            y_majority = y_combined[y_combined == 0].copy()
+            X_minority = X_combined[y_combined == 1].copy()
+            y_minority = y_combined[y_combined == 1].copy()
+
+            # Perform KMeans clustering on the majority class
+            kmeans = KMeans(n_clusters=n_clusters,n_init='auto', random_state=42)
+            X_majority['cluster'] = kmeans.fit_predict(X_majority)
+
+            # Undersample from each cluster
             undersampled_majority = []
-
+            total_samples = 0  # Track total number of undersampled majority samples
             for cluster in range(n_clusters):
-                cluster_data = X_train_successful[X_train_successful['cluster'] == cluster]
+                cluster_data = X_majority[X_majority['cluster'] == cluster]
                 if len(cluster_data) > n_samples_per_cluster:
                     undersampled_cluster = cluster_data.sample(n=n_samples_per_cluster, random_state=42)
+                    logging.info(f"Cluster {cluster} has {len(cluster_data)} samples. Undersampling to {n_samples_per_cluster}.")
                 else:
-                    undersampled_cluster = cluster_data  # If the cluster has fewer samples, take all of them
+                    undersampled_cluster = cluster_data  # Take all samples if fewer than n_samples_per_cluster
+                    logging.warning(f"Cluster {cluster} has only {len(cluster_data)} samples, not enough to undersample to {n_samples_per_cluster}.")
+                total_samples += len(undersampled_cluster)
                 undersampled_majority.append(undersampled_cluster)
 
-            # Concatenate the undersampled clusters
-            X_train_successful_undersampled = pd.concat(undersampled_majority).drop(columns=['cluster'])
+            # Combine undersampled clusters
+            X_majority_undersampled = pd.concat(undersampled_majority).drop(columns=['cluster']).reset_index(drop=True)
+            y_majority_undersampled = y_majority.loc[X_majority_undersampled.index].reset_index(drop=True)
 
-            # Combine the undersampled majority class with the minority class
-            X_train_balanced = pd.concat([X_train_successful_undersampled, X_train_ban])
-            y_train_balanced = pd.concat([y_train_successful.loc[X_train_successful_undersampled.index], y_train_ban])
+            logging.info(f"Total undersampled majority samples after combining clusters: {total_samples}")
+            logging.info(f"Shape of X_majority_undersampled: {X_majority_undersampled.shape}")
+            logging.info(f"Shape of y_majority_undersampled: {y_majority_undersampled.shape}")
+            # Combine with minority class
+            X_balanced = pd.concat([X_majority_undersampled, X_minority]).reset_index(drop=True)
+            y_balanced = pd.concat([y_majority_undersampled, y_minority]).reset_index(drop=True)
 
-            # Shuffle the data (optional)
-            X_train = X_train_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
-            y_train = y_train_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
-            logging.info(f"count: {y_train.value_counts()}")
+            # Log the shapes before shuffling
+            logging.info(f"Shape of X_balanced before shuffling: {X_balanced.shape}")
+            logging.info(f"Shape of y_balanced before shuffling: {y_balanced.shape}")
 
-            # Step 17: Apply ADASYN to the training data
-            logging.info("Applying ADASYN oversampling")
+            # Shuffle the dataset to ensure a randomized distribution
+            X_balanced = X_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
+            y_balanced = y_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
+
+            # Determine the split ratio
+            train_size = len(input_feature_train_selected) / (len(input_feature_train_selected) + len(input_feature_test_selected))
+
+            # Split the balanced dataset back into training and test sets
+            X_train_balanced, X_test_balanced, y_train_balanced, y_test_balanced = train_test_split(
+                X_balanced, y_balanced, train_size=train_size, random_state=42, stratify=y_balanced
+            )
+
+            # Log the final class distributions for training and test sets
+            logging.info(f"Final Training set count (after balancing and splitting): {y_train_balanced.value_counts()}")
+            logging.info(f"Final Test set count (after balancing and splitting): {y_test_balanced.value_counts()}")
+
+            # If you are applying ADASYN or another resampling method on the training set, do it here
+            # For example, applying ADASYN to handle any remaining imbalance in the training set
             adasyn = ADASYN(random_state=42)
-            X_train, y_train = adasyn.fit_resample(X_train, y_train)
-            logging.info(f"count: {y_train.value_counts()}")
+            X_train, y_train = adasyn.fit_resample(X_train_balanced, y_train_balanced)
 
+            # Check the new class distribution after applying ADASYN
+            logging.info(f"Class distribution after ADASYN: {y_train.value_counts()}")
+            
             # Step 18: Return the transformed datasets
-            return X_train, y_train, input_feature_test_selected, target_feature_test_df
+            return X_train, y_train,X_test_balanced,y_test_balanced
 
         except Exception as e:
             raise CustomException(e, sys)
