@@ -56,9 +56,10 @@ if __name__=="__main__":
     obj=DataIngestion()
     train_data,test_data=obj.initiate_data_ingestion()
     
-    data_transformer = DataTransformation(method='mutual_info', k_best=8)
+    data_transformer = DataTransformation(method='spearman')
     X_train, y_train, X_test, y_test=data_transformer.initiate_data_transformation(train_data,test_data)
     print(f"starting moel trainer")
 
-    modeltrainer=ModelTrainer()
-    print(modeltrainer.initiate_model_trainer(X_train, y_train, X_test, y_test)) 
+    modeltrainer = ModelTrainer()
+    result = modeltrainer.initiate_model_trainer(X_train, y_train, X_test, y_test)
+    print("Model Training Result:", result)

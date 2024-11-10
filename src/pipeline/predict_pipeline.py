@@ -17,28 +17,13 @@ class PredictPipeline:
         self.feature_selection_pipeline = load_object(file_path=os.path.join("artifacts", "feature_selection.pkl"))
         self.model = load_object(file_path=os.path.join("artifacts", "classification_model.pkl"))
 
-        # Define expected columns from training, without `is_bankrupt`
-        """    self.expected_columns = [
-            "cik", "companyName", "ticker", "accessionNo", "Assets", "fy", "fp", "form", "filed",
-            "Current_Assets", "Current_liabilities", "Stockholder_Equity", "Liabilities_And_StockholderEquity",
-            "Earning_Before_Interest_And_Taxes", "Retained_Earnings", "Revenues", "Working_capital", "Liabilities",
-            "NetCash_OperatingActivities", "NetCash_InvestingActivities", "NetCash_FinancingActivities", "Cash",
-            "AccountsReceivable", "Inventory", "Current_Other_Assets", "Noncurrent_Assets", "Intangible_Assets",
-            "AccountsPayable", "NetIncome", "GrossProfit", "Operating_Expenses", "Nonoperating_Income",
-            "InterestExpense", "ShortTerm_Debt", "LongTerm_Debt", "Noncurrent_Liabilities"
-        ] """
-
     def predict(self, features):
         try:
             logging.info(f"Original DataFrame columns: {features.columns.tolist()}")
 
-            # Reindex to match expected columns without is_bankrupt
-            #features = features.reindex(columns=self.expected_columns, fill_value=0)
-            logging.info(f"DataFrame columns after reindexing: {features.columns.tolist()}")
-
             # Step 1: Clean the data
             data_cleaned = self.cleaning_pipeline.transform(features)
-            if isinstance(data_cleaned, np.ndarray):  # Convert to DataFrame if ndarray
+            if isinstance(data_cleaned, np.ndarray):
                 data_cleaned = pd.DataFrame(data_cleaned, columns=features.columns)
             logging.info(f"Data shape after cleaning: {data_cleaned.columns.tolist()}")
 
@@ -59,7 +44,6 @@ class PredictPipeline:
             if isinstance(data_eng, np.ndarray):
                 data_eng = pd.DataFrame(data_eng, columns=data_scaled.columns)
             logging.info(f"Data shape after feature engineering: {data_eng.shape}")
-            logging.info(f"Feature-engineered columns: {data_eng.shape[1]}")
 
             # Step 5: Feature selection
             data_selected = self.feature_selection_pipeline.transform(data_eng)
@@ -67,14 +51,19 @@ class PredictPipeline:
                 data_selected = pd.DataFrame(data_selected)
             logging.info(f"Data shape after feature selection: {data_selected.shape}")
 
-            # Step 6: Make predictions
+            # Step 2: Make predictions
             predictions = self.model.predict(data_selected)
-            logging.info(f"Prediction results: {predictions}")
 
-            return predictions
+            # Step 3: Get prediction probabilities if available
+            if hasattr(self.model, "predict_proba"):
+                predictions_proba = self.model.predict_proba(data_selected)[:, 1]  # Probability of positive class
+            else:
+                predictions_proba = [None] * len(predictions)
 
+            return predictions, predictions_proba
         except Exception as e:
             raise CustomException(e, sys)
+
 
 
 

@@ -18,7 +18,10 @@ from imblearn.over_sampling import ADASYN
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
-
+from imblearn.under_sampling import TomekLinks
+from imblearn.under_sampling import EditedNearestNeighbours
+from collections import Counter
+import pandas as pd
 @dataclass
 class DataTransformationConfig:
     cleaning_pipeline_path = os.path.join("artifacts", "cleaning_pipeline.pkl")
@@ -36,13 +39,12 @@ class DataTransformationConfig:
 
 
 class DataTransformation:
-    def __init__(self, threshold=0.01, method='variance', k_best=5, n_features_to_select=5, random_state=42):
+    def __init__(self, threshold=0.01, method='variance', k_best=5, n_features_to_select=5):
         self.data_transformation_config = DataTransformationConfig()
         self.threshold = threshold
         self.method = method
         self.k_best = k_best
         self.n_features_to_select = n_features_to_select
-        self.random_state = random_state
         logging.info(f"Data transformation initialized with feature selection method: {self.method}")
 
     ### Feature Selection
@@ -128,7 +130,7 @@ class DataTransformation:
     def random_forest_rfe_pipeline(self, y):
         try:
             logging.info("Creating RFE with Random Forest pipeline")
-            rf_model = RandomForestClassifier(n_estimators=100, random_state=self.random_state)
+            rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
             pipeline = Pipeline(steps=[
                 ('rfe', RFE(estimator=rf_model, n_features_to_select=self.n_features_to_select))
             ])
@@ -405,7 +407,6 @@ class DataTransformation:
             test_df_fe.replace([np.inf, -np.inf], np.nan, inplace=True)
             test_df_fe.dropna(inplace=True)
 
-           
             # Align target feature DataFrames with the cleaned input features
             target_feature_train_df = y_train.loc[train_df_fe.index].reset_index(drop=True)
             target_feature_test_df = y_test.loc[test_df_fe.index].reset_index(drop=True)
@@ -448,7 +449,7 @@ class DataTransformation:
 
 
             # Step 16: Perform undersampling using KMeans clustering on successful class
-            # Define constants
+             
             n_clusters = 6  # Number of clusters for KMeans
             n_samples_per_cluster = 50  # Desired number of samples per cluster
             # Convertir les ndarrays en DataFrame avant la concaténation
@@ -518,7 +519,7 @@ class DataTransformation:
             logging.info(f"Final Training set count (after balancing and splitting): {y_train_balanced.value_counts()}")
             logging.info(f"Final Test set count (after balancing and splitting): {y_test_balanced.value_counts()}")
 
-            # If you are applying ADASYN or another resampling method on the training set, do it here
+            #
             # For example, applying ADASYN to handle any remaining imbalance in the training set
             adasyn = ADASYN(random_state=42)
             X_train, y_train = adasyn.fit_resample(X_train_balanced, y_train_balanced)
@@ -528,7 +529,51 @@ class DataTransformation:
             
             # Step 18: Return the transformed datasets
             return X_train, y_train,X_test_balanced,y_test_balanced
+            """
+            # return X_train, y_train,X_test_balanced,y_test_balanced
+            input_feature_train_selected = pd.DataFrame(input_feature_train_selected)
+            input_feature_test_selected = pd.DataFrame(input_feature_test_selected)
 
+                        
+            # Log dimensions of the training and test data after feature selection
+            logging.info(f"Shape of input_feature_train_selected: {input_feature_train_selected.shape}")
+            logging.info(f"Shape of input_feature_test_selected: {input_feature_test_selected.shape}")
+
+            # Step 16: Apply Edited Nearest Neighbors (ENN) for undersampling
+            logging.info("Applying ENN to undersample the majority class in the training set")
+            enn = EditedNearestNeighbours(sampling_strategy='majority', n_neighbors=3)
+            X_train_enn, y_train_enn = enn.fit_resample(input_feature_train_selected, target_feature_train_df)
+
+            # Log class distribution after ENN
+            logging.info(f"Class distribution after ENN: {Counter(y_train_enn)}")
+
+            # Combine the ENN undersampled training set with the original test set for balancing
+            X_combined = pd.concat([X_train_enn, input_feature_test_selected]).reset_index(drop=True)
+            y_combined = pd.concat([y_train_enn, target_feature_test_df]).reset_index(drop=True)
+
+            # Determine the split ratio for train and test sets
+            train_size = len(X_train_enn) / (len(X_train_enn) + len(input_feature_test_selected))
+
+            # Split the balanced dataset back into training and test sets
+            X_train_balanced, X_test_balanced, y_train_balanced, y_test_balanced = train_test_split(
+                X_combined, y_combined, train_size=train_size, random_state=42, stratify=y_combined
+            )
+
+            # Log final class distributions for training and test sets
+            logging.info(f"Final Training set count after ENN undersampling: {y_train_balanced.value_counts()}")
+            logging.info(f"Final Test set count after balancing: {y_test_balanced.value_counts()}")
+
+            # Step 18: Apply ADASYN for oversampling the minority class on the training set
+            adasyn = ADASYN(random_state=42)
+            X_train_final, y_train_final = adasyn.fit_resample(X_train_balanced, y_train_balanced)
+
+            # Log the new class distribution after applying ADASYN
+            logging.info(f"Class distribution after ADASYN: {Counter(y_train_final)}")
+            
+            # Return the final balanced datasets
+            return X_train_final, y_train_final, X_test_balanced, y_test_balanced
+"""
+        # Return the final balanced datasets
         except Exception as e:
             raise CustomException(e, sys)
 

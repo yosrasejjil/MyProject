@@ -7,7 +7,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from sklearn.model_selection import GridSearchCV, cross_val_predict
-
+import numpy as np
 from src.exception import CustomException
 from src.logger import logging
 from src.utils import save_object, evaluate_classification_model
@@ -22,13 +22,14 @@ class ModelTrainer:
 
     def initiate_model_trainer(self, X_train, y_train, X_test, y_test):
         try:
+        
             param_grids = {
-                "Decision Tree Classifier": {
-                    'max_depth': [3, 5, 7, 10, None],
-                    'min_samples_split': [2, 5, 10],
-                    'min_samples_leaf': [1, 2, 4],
-                    'criterion': ['gini', 'entropy']
-                },
+                # "Decision Tree Classifier": {
+                #     'max_depth': [3, 5, 7, 10, None],
+                #     'min_samples_split': [2, 5, 10],
+                #     'min_samples_leaf': [1, 2, 4],
+                #     'criterion': ['gini', 'entropy']
+                # },
                 "Random Forest Classifier": {
                     'n_estimators': [50, 100],
                     'max_depth': [3, 5, 10]
@@ -53,7 +54,7 @@ class ModelTrainer:
             }
 
             models = {
-                "Decision Tree Classifier": DecisionTreeClassifier(),
+                #"Decision Tree Classifier": DecisionTreeClassifier(),
                 "Random Forest Classifier": RandomForestClassifier(),
                 "Extra Trees Classifier": ExtraTreesClassifier(),
                 "XGBClassifier": XGBClassifier(eval_metric='logloss'),
@@ -118,10 +119,16 @@ class ModelTrainer:
             )
             logging.info(f"Model saved to {self.model_trainer_config.trained_model_file_path}")
 
+            return {
+                "best_model": best_model_name,
+                "best_params": best_model_data["best_params"],
+                "metrics": best_model_data["test_metrics"]
+            }
 
         except KeyError as e:
             raise CustomException(f"Model key error: {e}", sys)
-
+        except Exception as e:
+            raise CustomException(e, sys)
 
 
 
