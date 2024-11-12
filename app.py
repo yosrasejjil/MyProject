@@ -25,6 +25,8 @@ def predict():
         # Convert predictions and probabilities to JSON-compatible formats
         predictions = predictions.tolist() if isinstance(predictions, (np.ndarray, pd.Series)) else predictions
         predictions_proba = [float(prob) if prob is not None else None for prob in predictions_proba]
+        print(f"Prediction: {predictions[0]}")
+        print(f"Prediction: {predictions_proba[0]}")
 
         # Send response
         return jsonify({
