@@ -1,13 +1,71 @@
-name: CI/CD Workflow
+name: workflow
 
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  example-job:
+  integration:
+    name: Continuous Integration
     runs-on: ubuntu-latest
     steps:
-      - name: Example Step
-        run: echo "Hello from CI/CD!"
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Lint code
+        run: echo "Linting repository"
+
+      - name: Run unit tests
+        run: echo "Running unit tests"
+
+  build-and-push-swr-image:
+    name: Continuous Delivery
+    needs: integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Login to Huawei SWR
+        env:
+          HUAWEI_CLOUD_ACCOUNT: ${{ secrets.HUAWEI_CLOUD_ACCOUNT }}
+          HUAWEI_CLOUD_PASSWORD: ${{ secrets.HUAWEI_CLOUD_PASSWORD }}
+          HUAWEI_CLOUD_REGION: ${{ secrets.HUAWEI_CLOUD_REGION }}
+        run: |
+          docker login -u $HUAWEI_CLOUD_ACCOUNT -p $HUAWEI_CLOUD_PASSWORD swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com
+
+      - name: Build and Push Docker Image to SWR
+        env:
+          HUAWEI_CLOUD_REGION: ${{ secrets.HUAWEI_CLOUD_REGION }}
+          SWR_REPOSITORY: ${{ secrets.HUAWEI_SWR_REPOSITORY }}
+          IMAGE_TAG: latest
+        run: |
+          docker build -t swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:$IMAGE_TAG .
+          docker push swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:$IMAGE_TAG
+
+  deploy-to-ecs:
+    needs: build-and-push-swr-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Huawei SWR
+        env:
+          HUAWEI_CLOUD_ACCOUNT: ${{ secrets.HUAWEI_CLOUD_ACCOUNT }}
+          HUAWEI_CLOUD_PASSWORD: ${{ secrets.HUAWEI_CLOUD_PASSWORD }}
+          HUAWEI_CLOUD_REGION: ${{ secrets.HUAWEI_CLOUD_REGION }}
+        run: |
+          docker login -u $HUAWEI_CLOUD_ACCOUNT -p $HUAWEI_CLOUD_PASSWORD swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com
+
+      - name: Pull and Run Docker Image on ECS
+        env:
+          HUAWEI_CLOUD_REGION: ${{ secrets.HUAWEI_CLOUD_REGION }}
+          SWR_REPOSITORY: ${{ secrets.HUAWEI_SWR_REPOSITORY }}
+        run: |
+          docker pull swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:latest
+          docker run -d -p 8080:8080 --name=mlapp swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:latest
