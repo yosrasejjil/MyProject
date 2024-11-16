@@ -94,3 +94,4 @@ jobs:
       # - name: Clean up old Docker resources
       #   run: |
       #     docker system prune -f
+      # # Optional: Stop and remove an existing container if running
