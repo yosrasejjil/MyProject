@@ -61,3 +61,4 @@ jobs:
           SWR_REPOSITORY: ${{ secrets.HUAWEI_SWR_REPOSITORY }}
         run: |
           docker pull swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:latest
+#k
