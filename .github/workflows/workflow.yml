@@ -33,6 +33,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Install Utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq unzip
+
       - name: Login to Huawei SWR
         env:
           HUAWEI_CLOUD_ACCOUNT: ${{ secrets.HUAWEI_CLOUD_ACCOUNT }}
@@ -41,19 +46,24 @@ jobs:
         run: |
           docker login -u $HUAWEI_CLOUD_ACCOUNT -p $HUAWEI_CLOUD_PASSWORD swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com
 
-      - name: Build and Push Docker Image to SWR
+      - name: Build, tag, and push image to Huawei SWR
         env:
           HUAWEI_CLOUD_REGION: ${{ secrets.HUAWEI_CLOUD_REGION }}
           SWR_REPOSITORY: ${{ secrets.HUAWEI_SWR_REPOSITORY }}
           IMAGE_TAG: latest
         run: |
+          # Build a Docker container and push it to SWR
           docker build -t swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:$IMAGE_TAG .
           docker push swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:$IMAGE_TAG"
 
-  deploy-to-ecs:
+  Continuous-Deployment:
     needs: build-and-push-swr-image
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
       - name: Login to Huawei SWR
         env:
           HUAWEI_CLOUD_ACCOUNT: ${{ secrets.HUAWEI_CLOUD_ACCOUNT }}
@@ -62,10 +72,25 @@ jobs:
         run: |
           docker login -u $HUAWEI_CLOUD_ACCOUNT -p $HUAWEI_CLOUD_PASSWORD swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com
 
-      - name: Pull and Run Docker Image on ECS
+      - name: Pull latest images
         env:
           HUAWEI_CLOUD_REGION: ${{ secrets.HUAWEI_CLOUD_REGION }}
           SWR_REPOSITORY: ${{ secrets.HUAWEI_SWR_REPOSITORY }}
         run: |
           docker pull swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:latest
-          docker run -d -p 8080:8080 --name=mlapp swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:latest
+        
+      # # Optional: Stop and remove an existing container if running
+      # - name: Stop and remove existing container
+      #   run: |
+      #     docker ps -q --filter "name=mltest" | grep -q . && docker stop mltest && docker rm -fv mltest
+
+      # - name: Run Docker Image to serve users
+      #   env:
+      #     HUAWEI_CLOUD_REGION: ${{ secrets.HUAWEI_CLOUD_REGION }}
+      #     SWR_REPOSITORY: ${{ secrets.HUAWEI_SWR_REPOSITORY }}
+      #   run: |
+      #     docker run -d -p 8080:8080 --ipc="host" --name=mltest swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com/$SWR_REPOSITORY:latest
+
+      # - name: Clean up old Docker resources
+      #   run: |
+      #     docker system prune -f

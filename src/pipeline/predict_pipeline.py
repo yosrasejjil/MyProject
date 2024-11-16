@@ -1,3 +1,5 @@
+import numpy as np
+import pandas as pd
 import os
 import sys
 import pandas as pd
@@ -5,56 +7,57 @@ from src.exception import CustomException
 from src.utils import load_object
 from src.logger import logging
 import numpy as np
-import pandas as pd
+
 
 class PredictPipeline:
     def __init__(self):
         # Load all preprocessing objects and model during initialization
-        self.cleaning_pipeline = load_object(file_path=os.path.join("artifacts", "cleaning_pipeline.pkl"))
-        self.eng_pipeline = load_object(file_path=os.path.join("artifacts", "feature_engineering.pkl"))
         self.missing_pipeline = load_object(file_path=os.path.join("artifacts", "preprocessor.pkl"))
         self.scaling_pipeline = load_object(file_path=os.path.join("artifacts", "scaling_pipeline.pkl"))
         self.feature_selection_pipeline = load_object(file_path=os.path.join("artifacts", "feature_selection.pkl"))
         self.model = load_object(file_path=os.path.join("artifacts", "classification_model.pkl"))
 
+    
+
     def predict(self, features):
         try:
             logging.info(f"Original DataFrame columns: {features.columns.tolist()}")
 
-            # Step 1: Clean the data
-            data_cleaned = self.cleaning_pipeline.transform(features)
-            if isinstance(data_cleaned, np.ndarray):
-                data_cleaned = pd.DataFrame(data_cleaned, columns=features.columns)
-            logging.info(f"Data shape after cleaning: {data_cleaned.columns.tolist()}")
+            # Step 1: Drop unnecessary columns
+            columns_to_drop = [
+                'id', 'cik', 'ticker', 'accessionNo', 'companyName', 'fy', 'fp', 'form', 'filed',
+                'Current_Other_Assets', 'Nonoperating_Income', 'Intangible_Assets', 'GrossProfit'
+            ]
+            features = self.drop_specified_columns(features, columns_to_drop)
+            logging.info(f"Data shape after dropping specified columns: {features.shape}")
 
             # Step 2: Handle missing data
-            data_miss = self.missing_pipeline.transform(data_cleaned)
+            data_miss = self.missing_pipeline.transform(features)
             if isinstance(data_miss, np.ndarray):
-                data_miss = pd.DataFrame(data_miss, columns=data_cleaned.columns)
-            logging.info(f"Data shape after missing data handling: {data_miss.columns.tolist()}")
+                data_miss = pd.DataFrame(data_miss, columns=features.columns)
+            logging.info(f"Data shape after missing data handling: {data_miss.shape}")
 
             # Step 3: Scale data
             data_scaled = self.scaling_pipeline.transform(data_miss)
             if isinstance(data_scaled, np.ndarray):
                 data_scaled = pd.DataFrame(data_scaled, columns=data_miss.columns)
-            logging.info(f"Data shape after scaling: {data_scaled.columns.tolist()}")
+            logging.info(f"Data shape after scaling: {data_scaled.shape}")
 
-            # Step 4: Apply feature engineering
-            data_eng = self.eng_pipeline.transform(data_scaled)
-            if isinstance(data_eng, np.ndarray):
-                data_eng = pd.DataFrame(data_eng, columns=data_scaled.columns)
-            logging.info(f"Data shape after feature engineering: {data_eng.shape}")
+            # Step 4: Apply feature engineering (ratios calculation)
+            data_ratios = self.calculate_ratios(data_scaled)
+            data_combined = pd.concat([data_scaled, data_ratios], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
+            logging.info(f"Data shape after feature engineering: {data_combined.shape}")
 
             # Step 5: Feature selection
-            data_selected = self.feature_selection_pipeline.transform(data_eng)
+            data_selected = self.feature_selection_pipeline.transform(data_combined)
             if isinstance(data_selected, np.ndarray):
                 data_selected = pd.DataFrame(data_selected)
             logging.info(f"Data shape after feature selection: {data_selected.shape}")
 
-            # Step 2: Make predictions
+            # Step 6: Make predictions
             predictions = self.model.predict(data_selected)
 
-            # Step 3: Get prediction probabilities if available
+            # Step 7: Get prediction probabilities if available
             if hasattr(self.model, "predict_proba"):
                 predictions_proba = self.model.predict_proba(data_selected)[:, 1]  # Probability of positive class
             else:
@@ -63,9 +66,38 @@ class PredictPipeline:
             return predictions, predictions_proba
         except Exception as e:
             raise CustomException(e, sys)
+    @staticmethod
+    def drop_specified_columns(X, columns_to_drop):
+        """Drops specified columns from the input DataFrame."""
+        return X.drop(columns=[col for col in columns_to_drop if col in X.columns], axis=1)
+        
+    @staticmethod
+    def calculate_ratios(data):
+        """Calculate financial ratios directly in the pipeline."""
+        ratios = pd.DataFrame()
 
+        ratios['R1'] = data['ShortTerm_Debt'] / data['Stockholder_Equity']  # Short Term Debt / Equity
+        ratios['R2'] = data['Liabilities'] / data['Assets']  # Liabilities / Total Assets
+        ratios['R3'] = data['Stockholder_Equity'] / data['Assets']  # Total Equity / Total Assets
+        ratios['R4'] = data['Assets'] / data['Stockholder_Equity']  # Total Assets / Total Equity
+        ratios['R5'] = data['Cash'] / data['Assets']  # Cash / Total Assets
+        ratios['R6'] = data['Working_capital'] / data['Assets']  # Working Capital / Total Assets
+        ratios['R7'] = data['Current_Assets'] / data['Current_liabilities']  # Current Ratio
+        ratios['R8'] = data['NetIncome'] / data['Assets']  # Net Income / Total Assets (ROA)
+        ratios['R9'] = data['Earning_Before_Interest_And_Taxes'] / data['InterestExpense']  # EBIT / Interest Expenses
+        ratios['R10'] = data['LongTerm_Debt'] / data['Assets']  # Long-term Debt / Total Assets
+        ratios['R11'] = (data['ShortTerm_Debt'] + data['LongTerm_Debt']) / data['Assets']  # Debt Dependency Ratio
+        ratios['R12'] = (data['ShortTerm_Debt'] + data['LongTerm_Debt']) / (data['Cash'] + data['Assets'])  # Debt Capacity Ratio
+        ratios['R13'] = (data['ShortTerm_Debt'] + data['LongTerm_Debt']) / data['Revenues']  # Debt / Total Revenue
+        ratios['R14'] = data['AccountsReceivable'] / data['Liabilities']  # Accounts Receivable / Liabilities
 
+        # Auxiliary variables for cash flows
+        ratios['AV1'] = data['Cash']
+        ratios['AV2'] = data['NetCash_OperatingActivities']
+        ratios['AV3'] = data['NetCash_InvestingActivities']
+        ratios['AV4'] = data['NetCash_FinancingActivities']
 
+        return ratios
 
 class CustomData:
     def __init__(self, 

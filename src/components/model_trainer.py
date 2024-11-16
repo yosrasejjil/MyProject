@@ -64,7 +64,7 @@ class ModelTrainer:
                 "Random Forest Classifier": RandomForestClassifier(),
                 "Extra Trees Classifier": ExtraTreesClassifier(),
                 "XGBClassifier": XGBClassifier(eval_metric='logloss'),
-                "Support Vector Classifier": SVC(probability=True)
+                #"Support Vector Classifier": SVC(probability=True)
             }
 
             model_report = {}
