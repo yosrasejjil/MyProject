@@ -62,7 +62,7 @@ class ModelTrainer:
             models = {
                 #"Decision Tree Classifier": DecisionTreeClassifier(),
                 "Random Forest Classifier": RandomForestClassifier(),
-                "Extra Trees Classifier": ExtraTreesClassifier(),
+                #"Extra Trees Classifier": ExtraTreesClassifier(),
                 "XGBClassifier": XGBClassifier(eval_metric='logloss'),
                 #"Support Vector Classifier": SVC(probability=True)
             }
