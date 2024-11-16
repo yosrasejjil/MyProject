@@ -46,6 +46,7 @@ jobs:
         run: |
           echo $HUAWEI_CLOUD_PASSWORD | docker login -u $HUAWEI_CLOUD_ACCOUNT --password-stdin swr.${HUAWEI_CLOUD_REGION}.myhuaweicloud.com
 
+
       - name: Build, tag, and push image to Huawei SWR
         env:
           HUAWEI_CLOUD_REGION: ${{ secrets.HUAWEI_CLOUD_REGION }}
