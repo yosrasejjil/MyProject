@@ -15,7 +15,7 @@ jobs:
 
       - name: List files in workspace
         run: ls -la
-        
+
       - name: Build Docker image
         run: |
           docker build -t csapp:1.0.1 .
@@ -25,7 +25,7 @@ jobs:
 
       - name: Transfer Docker image to ECS
         run: |
-          sshpass -p "${{ secrets.HUAWEI_SERVER_PASSWORD }}" scp csapp.tar.gz ubuntu@${{ secrets.HUAWEI_SERVER_IP }}:/tmp/
+          sshpass -p "${{ secrets.HUAWEI_SERVER_PASSWORD }}" scp -o StrictHostKeyChecking=no csapp.tar.gz root@${{ secrets.HUAWEI_SERVER_IP }}:/tmp/
 
       - name: Deploy Docker container on ECS
         run: |
