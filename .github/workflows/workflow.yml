@@ -32,4 +32,5 @@ jobs:
           sudo docker rm csapp || true
           sudo docker run -d -p 5000:5000 --name csapp csapp:1.0.1
           EOF
-#1
+      - name: List files in workspace
+        run: ls -la
