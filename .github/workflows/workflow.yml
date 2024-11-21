@@ -15,10 +15,10 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t creditrrating:1.0.1 .
+          docker build -t csapp:1.0.1 .
 
       - name: Save Docker image
-        run: docker save creditrrating:1.0.1 | gzip > csapp.tar.gz
+        run: docker save csapp:1.0.1 | gzip > csapp.tar.gz
 
       - name: Transfer Docker image to ECS
         run: |
@@ -30,6 +30,6 @@ jobs:
           sudo docker load < /tmp/csapp.tar.gz
           sudo docker stop csapp || true
           sudo docker rm csapp || true
-          sudo docker run -d -p 5000:5000 --name csapp creditrrating:1.0.1
+          sudo docker run -d -p 5000:5000 --name csapp csapp:1.0.1
           EOF
 #1
