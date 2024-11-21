@@ -25,5 +25,5 @@ tests/
 *.ipynb
 
 # Ignore Docker-related files
-Dockerfile
+#Dockerfile
 .dockerignore
