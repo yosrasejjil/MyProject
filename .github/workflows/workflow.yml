@@ -29,7 +29,7 @@ jobs:
 
       - name: Deploy Docker container on ECS
         run: |
-          sshpass -p "${{ secrets.HUAWEI_SERVER_PASSWORD }}" ssh ubuntu@${{ secrets.HUAWEI_SERVER_IP }} << 'EOF'
+          sshpass -p "${{ secrets.HUAWEI_SERVER_PASSWORD }}" ssh root@${{ secrets.HUAWEI_SERVER_IP }} << 'EOF'
           sudo docker load < /tmp/csapp.tar.gz
           sudo docker stop csapp || true
           sudo docker rm csapp || true
