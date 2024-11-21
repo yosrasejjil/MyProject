@@ -3,7 +3,7 @@ name: Deploy CSApp to ECS
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   deploy:
@@ -32,3 +32,4 @@ jobs:
           sudo docker rm csapp || true
           sudo docker run -d -p 5000:5000 --name csapp csapp:1.0.1
           EOF
+#1
