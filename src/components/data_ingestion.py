@@ -20,6 +20,7 @@ class DataIngestionConfig:
     train_data_path: str=os.path.join('artifacts',"train.csv")
     test_data_path: str=os.path.join('artifacts',"test.csv")
     raw_data_path: str=os.path.join('artifacts',"data.csv")
+    input_data_path: str = os.path.join('/app', 'notebook', 'data', 'data_v1.csv')  # Absolute path in Docker container
 
 class DataIngestion:
     def __init__(self):
@@ -29,7 +30,7 @@ class DataIngestion:
         logging.info("Entered the data ingestion method or component")
         try:
             # Read the dataset
-            df = pd.read_csv('notebook\data\data_v1.csv')
+            df = pd.read_csv(self.ingestion_config.input_data_path)
             logging.info('Read the dataset as dataframe')
             logging.info(f"Droppindf.shape: {df.shape}")
 
@@ -72,7 +73,7 @@ class DataIngestion:
                 self.ingestion_config.test_data_path
             )
         except Exception as e:
-            raise CustomException(e, sys)
+                raise CustomException(e, sys)
 
         
 if __name__=="__main__":

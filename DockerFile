@@ -1,7 +1,132 @@
-FROM python:3.8-slim-buster
+# Use a lightweight Python image
+FROM python:3.8-slim
+
+# Set the working directory
 WORKDIR /app
-COPY . /app
 
-RUN apt-get update -y && apt-get install -y ffmpeg libsm6 libxext6 unzip && pip install -r requirements.txt
+# Set environment variables
+ENV PYTHONPATH=/app
 
-CMD ["python3", "app.py"]
+# Copy only requirements.txt first for dependency installation
+COPY requirements.txt /app/
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ffmpeg libsm6 libxext6 unzip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy the application source code
+COPY src/ /app/src/
+COPY app.py /app/
+
+# Copy input data (optional)
+COPY notebook/data/ /app/notebook/data
+
+# Create a directory for artifacts
+RUN mkdir -p /app/artifacts
+
+# Run data ingestion during build to create pickle files
+RUN python /app/src/components/data_ingestion.py
+
+# Expose Flask app port
+EXPOSE 5000
+
+# Set the default command to start the Flask app
+CMD ["python", "app.py"]
+
+# FROM python:3.8-slim-buster
+# WORKDIR /app
+# COPY . /app
+
+# RUN apt-get update -y && apt-get install -y ffmpeg libsm6 libxext6 unzip && pip install -r requirements.txt
+
+# CMD ["python3", "app.py"]
+
+
+# Use a lightweight Python base image
+# FROM python:3.8-slim
+
+# # Set the working directory
+# WORKDIR /app
+
+# # Copy only requirements.txt first to leverage Docker caching
+# COPY requirements.txt .
+
+# # Install dependencies
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     ffmpeg libsm6 libxext6 unzip 
+# RUN pip install --no-cache-dir -r requirements.txt 
+# RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# # Copy only necessary files (e.g., app code, config files)
+# COPY src/ /app/src/
+# COPY app.py /app/
+
+# ENV PYTHONPATH=/app
+
+# # Use a lightweight Python base image
+# FROM python:3.8-slim
+
+# # Set the working directory
+# WORKDIR /app
+
+# # Set the Python path to recognize the src folder
+# ENV PYTHONPATH=/app
+
+# # Copy only requirements.txt first to leverage Docker caching
+# COPY requirements.txt .
+
+# # Install dependencies
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     ffmpeg libsm6 libxext6 unzip && \
+#     pip install --no-cache-dir -r requirements.txt && \
+#     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# # Copy the source code into the container
+# COPY src/ /app/src/
+# COPY app.py /app/
+
+# # Optional: Uncomment if you want to generate artifacts during build
+# RUN python src/components/data_ingestion.py
+# export PYTHONPATH=/app
+
+# # Set the default command to run the Flask app
+# CMD ["python3", "app.py"]
+# Use a lightweight Python base image
+# FROM python:3.8-slim
+
+# # Set the working directory inside the container
+# WORKDIR /app
+
+# # Set the Python path environment variable
+# ENV PYTHONPATH=/app
+
+# # Copy only requirements.txt first to leverage Docker caching for dependencies
+# COPY requirements.txt /app/
+
+# # Install system-level dependencies and Python libraries
+# RUN apt-get update && \
+#     apt-get install -y --no-install-recommends \
+#         ffmpeg \
+#         libsm6 \
+#         libxext6 \
+#         unzip && \
+#     pip install --no-cache-dir -r requirements.txt && \
+#     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# # Copy the application source code to the container
+# COPY src/ /app/src/
+# COPY app.py /app/
+# # Copy the necessary files into the container
+# COPY notebook/data /app/notebook/data
+
+# # Optional: Pre-run scripts if required
+# #RUN python /app/src/components/data_ingestion.py
+
+# # Set the default command to run the Flask app
+# #CMD ["python3", "app.py"]
+
+
+# CMD ["sh", "-c", "python /app/src/components/data_ingestion.py && python app.py"]
